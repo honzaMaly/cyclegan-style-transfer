@@ -6,6 +6,7 @@ https://medium.com/datadriveninvestor/style-transferring-of-image-using-cyclegan
 https://www.tensorflow.org/tutorials/generative/cyclegan
 https://arxiv.org/pdf/1703.10593.pdf
 https://towardsdatascience.com/style-transfer-with-gans-on-hd-images-88e8efcf3716
+https://www.tensorflow.org/tutorials/generative/pix2pix
 
 ## data
 http://yann.lecun.com/exdb/mnist/
