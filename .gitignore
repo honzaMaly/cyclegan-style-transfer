@@ -277,3 +277,6 @@ dmypy.json
 
 # ignore folder with data
 data
+
+# ignore visualization of a model
+model.png
