@@ -6,12 +6,12 @@ to_download = {'images': 'http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyt
                'labels': 'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz'}
 
 
-def get_mnist_data_set():
+def get_mnist_data_set(digits=(1, 7)):
     """
-    Method returns samples of '6' and '9' digit images (using MNIST database). If resources are not present,
+    Method returns samples of two digit images (using MNIST database). If resources are not present,
     they will be downloaded (and cached).
 
-    :return: numpy array of samples of digit 6, numpy array of samples of digit 9
+    :return: numpy array of samples of first digit, numpy array of samples of second digit
     """
 
     def get_resource(file_name, url):
@@ -48,4 +48,4 @@ def get_mnist_data_set():
         return tf.cast(data['images'][np.argwhere(data['labels'] == digit)].reshape(-1, 28, 28, 3), tf.float32)
 
     # get images of '9' and '6' instances only
-    return extract_images_for_digit_formatted(6), extract_images_for_digit_formatted(9)
+    return extract_images_for_digit_formatted(digits[0]), extract_images_for_digit_formatted(digits[1])

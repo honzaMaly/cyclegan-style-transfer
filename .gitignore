@@ -276,7 +276,7 @@ dmypy.json
 .pyre/
 
 # ignore folder with data
-data
+data_set
 
 # ignore visualization of a model
 model.png

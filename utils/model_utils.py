@@ -1,8 +1,14 @@
+import random
+import time
+
 import tensorflow as tf
 from matplotlib import pyplot as plt
 
 # default initializer for weights
 default_initializer = tf.random_normal_initializer(0., 0.02)
+# default optimizer for updating weights
+generator_default_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
+discriminator_default_optimizer = tf.keras.optimizers.Adam(2e-6, beta_1=0.5)
 
 
 class LayerConfiguration:
@@ -159,7 +165,7 @@ def u_net_generator(output_channels=3, input_shape=(256, 256, 3), encoder_decode
 
 
 def discriminator(input_shape=(256, 256, 3), downsampling_layers=discriminator_downsampling_layers,
-                  final_convolution_layer=discriminator_final_convolution_layer, kernel_size_last_layer=3):
+                  final_convolution_layer=discriminator_final_convolution_layer, kernel_size_last_layer=4):
     """
     PatchGan discriminator model: https://arxiv.org/abs/1611.07004
     :param final_convolution_layer: configuration for final convolution layer
@@ -226,3 +232,188 @@ def plot_transformations(image_sample_x, image_sample_y, generator_x2y, generato
     plot_row(image_sample_x, generator_x2y, 0)
     plot_row(image_sample_y, generator_y2x, 1)
     plt.show()
+
+
+def get_instance_data_set_generator(data_set, function_to_apply_per_instance=None):
+    """
+
+    :param data_set:
+    :param function_to_apply_per_instance:
+    :return:
+    """
+    while True:
+
+        # shuffle all pointers on instances
+        shuffled_indexes = list(range(len(data_set)))
+        random.shuffle(shuffled_indexes)
+
+        for index in shuffled_indexes:
+            instance = data_set[index]
+            if function_to_apply_per_instance is not None:
+                instance = function_to_apply_per_instance(instance)
+            yield instance
+
+
+def create_training_function(generator_x2y, discriminator_x, generator_y2x, discriminator_y,
+                             generator_x2y_optimizer=generator_default_optimizer,
+                             generator_y2x_optimizer=generator_default_optimizer,
+                             discriminator_x_optimizer=discriminator_default_optimizer,
+                             discriminator_y_optimizer=discriminator_default_optimizer,
+                             lambda_p=10, use_identity_loss=True):
+    """
+    TODO
+    :param use_identity_loss:
+    :param generator_x2y: generator to translate X -> Y
+    :param discriminator_x:
+    :param generator_y2x: generator to translate Y -> X
+    :param discriminator_y:
+    :param generator_x2y_optimizer:
+    :param generator_y2x_optimizer:
+    :param discriminator_x_optimizer:
+    :param discriminator_y_optimizer:
+    :param lambda_p:
+    :return:
+    """
+
+    # loss function to be used in some of derived loss functions
+    loss_obj = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+
+    # TODO - comment
+    def discriminator_loss(real, generated):
+        real_loss = loss_obj(tf.ones_like(real), real)
+        generated_loss = loss_obj(tf.zeros_like(generated), generated)
+        return (real_loss + generated_loss) * 0.5
+
+    # TODO - comment
+    def generator_loss(generated):
+        return loss_obj(tf.ones_like(generated), generated)
+
+    # TODO - comment
+    def calc_cycle_loss(real_image, cycled_image):
+        loss = tf.reduce_mean(tf.abs(real_image - cycled_image))
+        return lambda_p * loss
+
+    # TODO - comment
+    def identity_loss(real_image, same_image):
+        loss = tf.reduce_mean(tf.abs(real_image - same_image))
+        return lambda_p * 0.5 * loss
+
+    @tf.function
+    def train_step(real_x, real_y):
+        """
+        TODO
+        :param real_x:
+        :param real_y:
+        :return:
+        """
+
+        # A GradientTape object allows us to track operations performed on a TensorFlow graph and compute gradients
+        # with respect to some given variables. Persistent is set to True because the tape is used more than once
+        # to calculate the gradients.
+        # To see more: https://medium.com/analytics-vidhya/tf-gradienttape-explained-for-keras-users-cc3f06276f22
+        with tf.GradientTape(persistent=True) as tape:
+            # do translations with real image from X
+            # translate real image from X to Y by generator_x2y
+            fake_y = generator_x2y(real_x, training=True)
+            # translate generated image back to X by generator_y2x
+            cycled_x = generator_y2x(fake_y, training=True)
+            # check 'validity' of real and fake image
+            disc_real_x_validity = discriminator_x(real_x, training=True)
+            disc_fake_y_validity = discriminator_y(fake_y, training=True)
+
+            # do translations with real image from Y
+            # translate real image from Y to X by generator_y2x
+            fake_x = generator_y2x(real_y, training=True)
+            # translate generated image back to Y by generator_x2y
+            cycled_y = generator_x2y(fake_x, training=True)
+            # check 'validity' of real and fake image
+            disc_real_y_validity = discriminator_y(real_y, training=True)
+            disc_fake_x_validity = discriminator_x(fake_x, training=True)
+
+            # compute loss for each generator
+            # compute cycle loss
+            total_cycle_loss = calc_cycle_loss(real_x, cycled_x) + calc_cycle_loss(real_y, cycled_y)
+            # compute total generator loss as (adversarial loss + cycle loss)
+            total_gen_x2y_loss = generator_loss(disc_fake_y_validity) + total_cycle_loss
+            total_gen_y2x_loss = generator_loss(disc_fake_x_validity) + total_cycle_loss
+            if use_identity_loss:
+                # transform generated x and y back
+                # translate real image from X to X by generator_y2x (to compute identity loss)
+                same_x = generator_y2x(real_x, training=True) if use_identity_loss else None
+                # translate real image from Y to Y by generator_x2y (to compute identity loss)
+                same_y = generator_x2y(real_y, training=True)
+
+                # add identity loss
+                total_gen_x2y_loss = total_gen_x2y_loss + identity_loss(real_y, same_y)
+                total_gen_y2x_loss = total_gen_y2x_loss + identity_loss(real_x, same_x)
+
+            # compute loss for discriminators
+            disc_x_loss = discriminator_loss(disc_real_x_validity, disc_fake_x_validity)
+            disc_y_loss = discriminator_loss(disc_real_y_validity, disc_fake_y_validity)
+
+        # calculate the gradients for generator_x2y and then apply them to the optimizer
+        generator_x2y_gradients = tape.gradient(total_gen_x2y_loss, generator_x2y.trainable_variables)
+        generator_x2y_optimizer.apply_gradients(zip(generator_x2y_gradients, generator_x2y.trainable_variables))
+
+        # calculate the gradients for generator_y2x and then apply them to the optimizer
+        generator_y2x_gradients = tape.gradient(total_gen_y2x_loss, generator_y2x.trainable_variables)
+        generator_y2x_optimizer.apply_gradients(zip(generator_y2x_gradients, generator_y2x.trainable_variables))
+
+        # calculate the gradients for discriminator_x and then apply them to the optimizer
+        discriminator_x_gradients = tape.gradient(disc_x_loss, discriminator_x.trainable_variables)
+        discriminator_x_optimizer.apply_gradients(zip(discriminator_x_gradients, discriminator_x.trainable_variables))
+
+        # calculate the gradients for discriminator_y and then apply them to the optimizer
+        discriminator_y_gradients = tape.gradient(disc_y_loss, discriminator_y.trainable_variables)
+        discriminator_y_optimizer.apply_gradients(zip(discriminator_y_gradients, discriminator_y.trainable_variables))
+
+        # return loss for each model
+        return total_gen_x2y_loss, disc_x_loss, total_gen_y2x_loss, disc_y_loss
+
+    def run_epoch(data_set_generator_x, data_set_generator_y, number_of_samples, epoch=0, summary_writer=None):
+        """
+
+        :param summary_writer:
+        :param epoch:
+        :param data_set_generator_x:
+        :param data_set_generator_y:
+        :param number_of_samples:
+        :return:
+        """
+        start = time.time()
+        counter = 0
+
+        # use metrics objects to track average loss per epoch
+        avg_total_gen_x2y_loss = tf.keras.metrics.Mean(name='total_gen_x2y_loss', dtype=tf.float32)
+        avg_total_gen_y2x_loss = tf.keras.metrics.Mean(name='total_gen_y2x_loss', dtype=tf.float32)
+        avg_disc_x_loss = tf.keras.metrics.Mean(name='disc_x_loss', dtype=tf.float32)
+        avg_disc_y_loss = tf.keras.metrics.Mean(name='disc_y_loss', dtype=tf.float32)
+
+        while counter < number_of_samples:
+            counter += 1
+
+            # get samples
+            real_x = next(data_set_generator_x)
+            real_y = next(data_set_generator_y)
+
+            # compute loss and update weights
+            total_gen_x2y_loss, disc_x_loss, total_gen_y2x_loss, disc_y_loss = train_step(real_x, real_y)
+
+            # update loss metrics
+            avg_total_gen_x2y_loss.update_state(total_gen_x2y_loss)
+            avg_total_gen_y2x_loss.update_state(total_gen_y2x_loss)
+            avg_disc_x_loss.update_state(disc_x_loss)
+            avg_disc_y_loss.update_state(disc_y_loss)
+
+        # log performance
+        if summary_writer is not None:
+            with summary_writer.as_default():
+                tf.summary.scalar('total_gen_x2y_loss', avg_total_gen_x2y_loss.result(), step=epoch)
+                tf.summary.scalar('total_gen_y2x_loss', avg_total_gen_y2x_loss.result(), step=epoch)
+                tf.summary.scalar('disc_x_loss', avg_disc_x_loss.result(), step=epoch)
+                tf.summary.scalar('disc_y_loss', avg_disc_y_loss.result(), step=epoch)
+
+        # return time for this epoch
+        return time.time() - start
+
+    return run_epoch

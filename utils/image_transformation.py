@@ -30,7 +30,7 @@ def random_jitter(image, target_size=(256, 256), resize_before_cropping=0.1, mir
     :param resize_before_cropping: should be in interval [0, 0.5] - first, the image is resized by
     1 + resize_before_cropping, then it is randomly cropped
     :param mirror: can be new image mirrored (probability of .5)
-    :return: new image, original image
+    :return: new image
     """
 
     # resize image a bit and randomly crop image to original size
@@ -48,5 +48,4 @@ def random_jitter(image, target_size=(256, 256), resize_before_cropping=0.1, mir
     if target_size is not None and any(dim != target_size[index] for index, dim in enumerate(new_image.shape[:2])):
         new_image = resize(new_image, size=target_size)
 
-    # return pair of new and original image
-    return new_image, image
+    return new_image
