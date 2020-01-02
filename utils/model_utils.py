@@ -199,10 +199,11 @@ def discriminator(input_shape=(256, 256, 3), downsampling_layers=discriminator_d
 
 
 def plot_transformations(image_sample_x, image_sample_y, generator_x2y, generator_y2x, distributions_names=('X', 'Y'),
-                         fig_size=(8, 8), contrast=8):
+                         fig_size=(12, 12), contrast=1, main_title="Mapping between X->Y and Y->X"):
     """
     Plots provided original samples from X and Y. Generates samples x->y and y->x given original samples and generators
     to plot them.
+    :param main_title: main title for all sub-graphs
     :param image_sample_x: samples from X
     :param image_sample_y: samples from Y
     :param generator_x2y: generator mapping X->Y
@@ -214,23 +215,37 @@ def plot_transformations(image_sample_x, image_sample_y, generator_x2y, generato
 
     plt.figure(figsize=fig_size)
 
+    # add main title
+    plt.suptitle(main_title, fontsize="x-large")
+
     # plot single row
-    def plot_row(image_sample, generator, row_index):
+    def plot_row(image_sample, generator, generator_other, row_index):
+
+        # compute base index for first image
+        base_index = (row_index + 1) * (row_index + 1)
+
         # plot the original
-        plt.subplot(2, 2, (row_index + 1) + row_index)
+        plt.subplot(2, 3, base_index)
         plt.title("Original sample from '{}'".format(distributions_names[row_index % 2]))
         plt.imshow(image_sample * 0.5 * contrast + 0.5)
 
         # generate image from original and plot it
-        plt.subplot(2, 2, (row_index + 1) * 2)
+        plt.subplot(2, 3, base_index + 1)
         plt.title("Converted sample from '{}' to '{}'"
                   .format(distributions_names[row_index % 2], distributions_names[(row_index + 1) % 2]))
         generated_img = generator(tf.cast([image_sample], tf.float32))[0]
         plt.imshow(generated_img * 0.5 * contrast + 0.5)
 
+        # translate image by other generator for identity check
+        plt.subplot(2, 3, base_index + 2)
+        plt.title("Converted sample from '{}' to '{}'"
+                  .format(distributions_names[row_index % 2], distributions_names[row_index % 2]))
+        generated_img = generator_other(tf.cast([image_sample], tf.float32))[0]
+        plt.imshow(generated_img * 0.5 * contrast + 0.5)
+
     # plot data
-    plot_row(image_sample_x, generator_x2y, 0)
-    plot_row(image_sample_y, generator_y2x, 1)
+    plot_row(image_sample_x, generator_x2y, generator_y2x, 0)
+    plot_row(image_sample_y, generator_y2x, generator_x2y, 1)
     plt.show()
 
 
@@ -254,14 +269,18 @@ def get_instance_data_set_generator(data_set, function_to_apply_per_instance=Non
             yield instance
 
 
-def create_training_function(generator_x2y, discriminator_x, generator_y2x, discriminator_y,
+def create_training_function(data_set_generator_x, data_set_generator_y, number_of_samples, generator_x2y,
+                             discriminator_x, generator_y2x, discriminator_y,
                              generator_x2y_optimizer=generator_default_optimizer,
                              generator_y2x_optimizer=generator_default_optimizer,
                              discriminator_x_optimizer=discriminator_default_optimizer,
                              discriminator_y_optimizer=discriminator_default_optimizer,
-                             lambda_p=10, use_identity_loss=True):
+                             lambda_p=10, use_identity_loss=True, summary_writer=None):
     """
     TODO
+    :param number_of_samples:
+    :param data_set_generator_y:
+    :param data_set_generator_x:
     :param use_identity_loss:
     :param generator_x2y: generator to translate X -> Y
     :param discriminator_x:
@@ -272,6 +291,7 @@ def create_training_function(generator_x2y, discriminator_x, generator_y2x, disc
     :param discriminator_x_optimizer:
     :param discriminator_y_optimizer:
     :param lambda_p:
+    :param summary_writer:
     :return:
     """
 
@@ -370,14 +390,10 @@ def create_training_function(generator_x2y, discriminator_x, generator_y2x, disc
         # return loss for each model
         return total_gen_x2y_loss, disc_x_loss, total_gen_y2x_loss, disc_y_loss
 
-    def run_epoch(data_set_generator_x, data_set_generator_y, number_of_samples, epoch=0, summary_writer=None):
+    def run_epoch(epoch):
         """
-
-        :param summary_writer:
+        # TODO
         :param epoch:
-        :param data_set_generator_x:
-        :param data_set_generator_y:
-        :param number_of_samples:
         :return:
         """
         start = time.time()
@@ -416,4 +432,10 @@ def create_training_function(generator_x2y, discriminator_x, generator_y2x, disc
         # return time for this epoch
         return time.time() - start
 
-    return run_epoch
+    # run training loop
+    epoch = 0
+    while True:
+        execution_time = run_epoch(epoch)
+        epoch += 1
+        # return epoch number and time it took to execute this epoch
+        yield epoch - 1, execution_time
