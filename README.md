@@ -1,5 +1,8 @@
 # cyclegan-style-transfer
 
+TODO...
+
+## resources
 https://medium.com/analytics-vidhya/transforming-the-world-into-paintings-with-cyclegan-6748c0b85632
 https://machinelearningmastery.com/how-to-develop-cyclegan-models-from-scratch-with-keras/
 https://medium.com/datadriveninvestor/style-transferring-of-image-using-cyclegan-3cc7aff4fe61
@@ -12,3 +15,6 @@ https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
 
 ## data
 http://yann.lecun.com/exdb/mnist/
+http://vhosts.eecs.umich.edu/vision//activity-dataset.html
+https://afremov.com/
+https://data.vision.ee.ethz.ch/cvl/rrothe/imdb-wiki/
