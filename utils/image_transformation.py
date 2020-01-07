@@ -1,4 +1,8 @@
+import numpy as np
 import tensorflow as tf
+from PIL import Image
+from PIL import ImageFilter
+from random import uniform
 
 
 def normalize(image):
@@ -22,23 +26,24 @@ def resize(image, size=(256, 256)):
     return tf.image.resize(image, size, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
 
 
-def random_jitter(image, target_size=(256, 256), resize_before_cropping=0.1, mirror=False):
+def random_jitter(image, target_size=(256, 256), mirror=False):
     """
     Apply random jitter on given image
     :param image: original image
     :param target_size: target size
-    :param resize_before_cropping: should be in interval [0, 0.5] - first, the image is resized by
-    1 + resize_before_cropping, then it is randomly cropped
     :param mirror: can be new image mirrored (probability of .5)
     :return: new image
     """
 
-    # resize image a bit and randomly crop image to original size
-    if 0 < resize_before_cropping <= 0.5:
-        new_image = resize(image, size=[round(dim * (1.0 + resize_before_cropping)) for dim in image.shape[:2]])
-        new_image = tf.image.random_crop(new_image, size=image.shape[:])
+    # perform random crop
+    if all(target_size[i] <= round(dim * 0.9) for i, dim in enumerate(image.shape[:2])):
+        # to preserve quality of the image
+        size = [round(dim * 0.9) for dim in image.shape[:2]] + [image.shape[2]]
+        new_image = tf.image.random_crop(image, size=size)
     else:
-        new_image = image
+        # resize image a bit and randomly crop image to original size
+        new_image = resize(image, size=[round(dim * 1.1) for dim in image.shape[:2]])
+        new_image = tf.image.random_crop(new_image, size=image.shape[:])
 
     # apply mirroring
     if mirror and tf.random.uniform(()) > 0.5:
@@ -49,3 +54,14 @@ def random_jitter(image, target_size=(256, 256), resize_before_cropping=0.1, mir
         new_image = resize(new_image, size=target_size)
 
     return new_image
+
+
+def blur_image(image, radius=(1.0, 1.1)):
+    """
+    Blur given image using 'Gaussian Blur'
+    :param radius: radius parameter for 'Gaussian Blur'
+    :param image: image to be blurred
+    :return: blurred
+    """
+    return np.array(Image.fromarray(np.array(image))
+                    .filter(ImageFilter.GaussianBlur(radius=uniform(*radius))))

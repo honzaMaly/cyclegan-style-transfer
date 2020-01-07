@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 default_initializer = tf.random_normal_initializer(0., 0.02)
 # default optimizer for updating weights
 generator_default_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
-discriminator_default_optimizer = tf.keras.optimizers.Adam(2e-6, beta_1=0.5)
+discriminator_default_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 
 
 class LayerConfiguration:
@@ -16,7 +16,7 @@ class LayerConfiguration:
     Abstract class to represent a configuration for single layer
     """
 
-    def __init__(self, filters, kernel_size=3):
+    def __init__(self, filters, kernel_size=4):
         self.filters = filters
         self.kernel_size = kernel_size
 
@@ -26,7 +26,7 @@ class DownsampleLayerConfiguration(LayerConfiguration):
     Class to represent configuration for downsampling layer
     """
 
-    def __init__(self, filters, kernel_size=3, apply_norm=True):
+    def __init__(self, filters, kernel_size=4, apply_norm=True):
         super().__init__(filters, kernel_size)
         self.apply_norm = apply_norm
 
@@ -37,7 +37,7 @@ class UNetLayerConfiguration(DownsampleLayerConfiguration):
     upsampling (in the decoder) in a network with the UNet architecture
     """
 
-    def __init__(self, filters, kernel_size=3, apply_norm=True, dropout=0.0):
+    def __init__(self, filters, kernel_size=4, apply_norm=True, dropout=0.0):
         super().__init__(filters, kernel_size, apply_norm)
         self.dropout = dropout
 
@@ -199,10 +199,11 @@ def discriminator(input_shape=(256, 256, 3), downsampling_layers=discriminator_d
 
 
 def plot_transformations(image_sample_x, image_sample_y, generator_x2y, generator_y2x, distributions_names=('X', 'Y'),
-                         fig_size=(12, 12), contrast=1, main_title="Mapping between X->Y and Y->X"):
+                         fig_size=(12, 12), contrast=1, main_title="Mapping between X->Y and Y->X", save_as=None):
     """
     Plots provided original samples from X and Y. Generates samples x->y and y->x given original samples and generators
     to plot them.
+    :param save_as: if set to None, plot will be showed only, otherwise value of the argument will be used as a path
     :param main_title: main title for all sub-graphs
     :param image_sample_x: samples from X
     :param image_sample_y: samples from Y
@@ -246,6 +247,10 @@ def plot_transformations(image_sample_x, image_sample_y, generator_x2y, generato
     # plot data
     plot_row(image_sample_x, generator_x2y, generator_y2x, 0)
     plot_row(image_sample_y, generator_y2x, generator_x2y, 1)
+
+    # save image as well
+    if save_as is not None:
+        plt.savefig(save_as)
     plt.show()
 
 
@@ -439,3 +444,36 @@ def create_training_function(data_set_generator_x, data_set_generator_y, number_
         epoch += 1
         # return epoch number and time it took to execute this epoch
         yield epoch - 1, execution_time
+
+
+def plot_transformation(image_sample, generator, sample_distribution_name='X', other_distribution_name='Y',
+                        fig_size=(12, 12), contrast=1, save_as=None):
+    """
+    Plots provided original samples from X and Y. Generates samples x->y and y->x given original samples and generators
+    to plot them.
+    :param save_as: if set to None, plot will be showed only, otherwise value of the argument will be used as a path
+    :param image_sample: samples from distribution
+    :param generator: generator mapping from sample distribution to other one
+    :param sample_distribution_name: name for distribution of the sample
+    :param other_distribution_name: name for the other distribution
+    :param fig_size: size of figure
+    :param contrast: contrast to use when plotting image
+    """
+
+    plt.figure(figsize=fig_size)
+
+    # plot the original
+    plt.subplot(1, 2, 1)
+    plt.title("Original sample from '{}'".format(sample_distribution_name))
+    plt.imshow(image_sample * 0.5 * contrast + 0.5)
+
+    # generate image from original and plot it
+    plt.subplot(1, 2, 2)
+    plt.title("Converted sample from to '{}'".format(other_distribution_name))
+    generated_img = generator(tf.cast([image_sample], tf.float32))[0]
+    plt.imshow(generated_img * 0.5 * contrast + 0.5)
+
+    # save image as well
+    if save_as is not None:
+        plt.savefig(save_as)
+    plt.show()

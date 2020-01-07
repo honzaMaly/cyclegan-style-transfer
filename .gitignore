@@ -276,7 +276,17 @@ dmypy.json
 .pyre/
 
 # ignore folder with data
-data_set
+data_set/
 
 # ignore visualization of a model
 model.png
+
+# ignore log files
+logs/
+
+# MacOS stuff...
+*.DS_Store
+
+# output directory
+output/
+
