@@ -12,7 +12,6 @@ CycleGAN can be used to solve many interesting problems such as photo-enhancemen
 TODO
 
 ## Getting Started
-TODO
 
 ### Prerequisites
 - Linux, macOS or Windows
@@ -25,14 +24,13 @@ TODO
 - Check _requirements.txt_ with the list of all dependencies. Select appropriate Tensorflow dependency given your configuration.
 - Install all dependencies by executing: `pip install -r requirements.txt` into the Python environment.
 
-### Train/test CycleGAN for handwritten digits translation
+### Train/test CycleGAN with one of the provided examples
 - Start a **Jupyter server** within your Python environment by executing a command: `jupyter notebook`. Make sure that this command is executed relative to the project directory, so the project's script can be imported with no changes to the code.
 - Check the log of a Jupyter server in the console. There should be a server's address. Use it to interact with the server.
-- Open '_digit_transformation_' notebook on the server and run all cells. The example should run as it is (it automatically download the data set for you, or cached one will be used)
+- Open _**digit_transformation**_ or _**style_transfer**_ notebook on the server and run all cells. The example should run as it is (it will automatically download the data set for you)
 
-### Train/test CycleGAN for style transfer
+### Apply CycleGAN on your use-case
 TODO
-- The setup is similar to **digits translation example**. However, it requires to prepare a data set. You need to provide two domains 'X' and 'Y'.
 
 ## Resources
 
