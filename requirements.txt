@@ -1,4 +1,4 @@
-tensorflow==2.0.0 # switch to 'tensorflow-gpu' for GPU support
+tensorflow==2.5.3 # switch to 'tensorflow-gpu' for GPU support
 numpy==1.17.4
 notebook==6.0.2
 matplotlib==3.1.1
