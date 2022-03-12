@@ -3,4 +3,4 @@ numpy==1.17.4
 notebook==6.0.2
 matplotlib==3.1.1
 pydot==1.4.1 # for plotting models. Graphviz needs to be installed as well
-Pillow==6.2.1 # image processing library
+Pillow==9.0.1 # image processing library
