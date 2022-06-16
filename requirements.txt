@@ -1,6 +1,6 @@
 tensorflow==2.0.0 # switch to 'tensorflow-gpu' for GPU support
 numpy==1.17.4
-notebook==6.0.2
+notebook==6.4.12
 matplotlib==3.1.1
 pydot==1.4.1 # for plotting models. Graphviz needs to be installed as well
 Pillow==6.2.1 # image processing library
